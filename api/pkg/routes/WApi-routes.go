@@ -11,7 +11,6 @@ var RegisterWApiRoutes = func(router *mux.Router) {
 	router.HandleFunc("/sendAudio/", controllers.SendAudio).Methods("POST")
 	router.HandleFunc("/sendDocument/", controllers.SendDocument).Methods("POST")
 	router.HandleFunc("/sendVideo/", controllers.SendVideo).Methods("POST")
-	router.HandleFunc("/sendAnimation/", controllers.SendAnimation).Methods("POST")
 	router.HandleFunc("/sendContact/", controllers.SendContact).Methods("POST")
 	router.HandleFunc("/sendSticker/", controllers.SendSticker).Methods("POST")
 }
