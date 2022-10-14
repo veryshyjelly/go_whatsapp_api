@@ -1,10 +1,11 @@
 package main
 
 import (
-	"go_whatsapp_bot/app"
-	"go_whatsapp_bot/handler"
+	"go_whatsapp_bot/api/cmd"
+	"go_whatsapp_bot/app/pkg/config"
 )
 
 func main() {
-	app.Connect(handler.EventHandler, "INFO")
+	go config.Connect("INFO")
+	cmd.APIStart(":8080")
 }
