@@ -13,7 +13,7 @@ import (
 )
 
 func Connect(minLevel string) {
-	fmt.Println(sqlite3.Version())
+	_, _, _ = sqlite3.Version()
 	dbLog := waLog.Stdout("Database", minLevel, true)
 
 	container, err := sqlstore.New("sqlite3", "file:examplestore.db?_foreign_keys=on", dbLog)
