@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"go.mau.fi/whatsmeow/types/events"
-	"go_whatsapp_bot/app/pkg/models"
-	"go_whatsapp_bot/app/pkg/utils"
+	"go_whatsapp_api/app/pkg/models"
+	"go_whatsapp_api/app/pkg/utils"
 	"log"
 )
 

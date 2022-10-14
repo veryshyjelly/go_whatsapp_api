@@ -8,8 +8,8 @@ import (
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
-	"go_whatsapp_bot/app/pkg/controllers"
-	"go_whatsapp_bot/app/pkg/models"
+	"go_whatsapp_api/app/pkg/controllers"
+	"go_whatsapp_api/app/pkg/models"
 )
 
 func Connect(minLevel string) {

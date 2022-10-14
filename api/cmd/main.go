@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	"go_whatsapp_bot/api/pkg/routes"
-	"go_whatsapp_bot/app/pkg/models"
+	"go_whatsapp_api/api/pkg/routes"
+	"go_whatsapp_api/app/pkg/models"
 	"log"
 	"net/http"
 )

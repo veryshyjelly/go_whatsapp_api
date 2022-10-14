@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/gorilla/mux"
-	"go_whatsapp_bot/api/pkg/controllers"
+	"go_whatsapp_api/api/pkg/controllers"
 )
 
 var RegisterWApiRoutes = func(router *mux.Router) {

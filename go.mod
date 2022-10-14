@@ -1,4 +1,4 @@
-module go_whatsapp_bot
+module go_whatsapp_api
 
 go 1.18
 

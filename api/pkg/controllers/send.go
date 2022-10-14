@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
-	"go_whatsapp_bot/api/pkg/models"
+	"go_whatsapp_api/api/pkg/models"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"log"
@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	waProto "go.mau.fi/whatsmeow/binary/proto"
-	apiModels "go_whatsapp_bot/app/pkg/models"
+	apiModels "go_whatsapp_api/app/pkg/models"
 )
 
 func SendMessage(w http.ResponseWriter, r *http.Request) {
