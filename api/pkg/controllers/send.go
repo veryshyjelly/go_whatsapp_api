@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
-	"go_whatsapp_api/api/pkg/models"
 	"go_whatsapp_api/api/pkg/utils"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
@@ -18,12 +16,12 @@ import (
 	apiModels "go_whatsapp_api/app/pkg/models"
 )
 
-func SendMessage(w http.ResponseWriter, r *http.Request) {
+func SendMessage(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
 		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	var us = strings.Split(r.FormValue("chat_id"), "@")
@@ -36,29 +34,26 @@ func SendMessage(w http.ResponseWriter, r *http.Request) {
 		Conversation: proto.String(r.FormValue("text")),
 	}
 
-	fmt.Println(apiModels.Client.IsConnected())
 	resp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &msg)
 
 	if err != nil {
 		fmt.Println("Error sending message")
-		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(resp)
 		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
 	}
+	return err
 }
 
-func SendPhoto(w http.ResponseWriter, r *http.Request) {
+func SendPhoto(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	downFile := r.MultipartForm.File["image"][0]
@@ -67,7 +62,7 @@ func SendPhoto(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("Error opening file")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	fileBytes, err := ioutil.ReadAll(file)
@@ -75,9 +70,8 @@ func SendPhoto(w http.ResponseWriter, r *http.Request) {
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaImage)
 	if err != nil {
 		fmt.Println("Error while uploading")
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotExtended)
-		return
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
 	}
 
 	imageMsg := &waProto.ImageMessage{
@@ -96,41 +90,36 @@ func SendPhoto(w http.ResponseWriter, r *http.Request) {
 		User:   us[0],
 		Server: us[1],
 	}
+
 	rsp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
 		ImageMessage: imageMsg,
 	})
 	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotImplemented)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		fmt.Println("Error while sending message.")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(rsp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
+		w.Write(b)
 	}
+	return err
 }
 
-func SendVideo(w http.ResponseWriter, r *http.Request) {
+func SendVideo(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	downFile := r.MultipartForm.File["video"][0]
 	file, err := downFile.Open()
 	if err != nil {
 		fmt.Println("Error opening file.")
-		return
+		w.WriteHeader(http.StatusNotAcceptable)
+		return err
 	}
 
 	fileBytes, err := ioutil.ReadAll(file)
@@ -138,9 +127,8 @@ func SendVideo(w http.ResponseWriter, r *http.Request) {
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaVideo)
 	if err != nil {
 		fmt.Println("Error while uploading")
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
 	}
 
 	videoMsg := &waProto.VideoMessage{
@@ -164,30 +152,23 @@ func SendVideo(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotImplemented)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		fmt.Println("Error while sending message")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(rsp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
+		w.Write(b)
 	}
+	return err
 }
 
-func SendDocument(w http.ResponseWriter, r *http.Request) {
+func SendDocument(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	downFile := r.MultipartForm.File["file"][0]
@@ -195,7 +176,8 @@ func SendDocument(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 	if err != nil {
 		fmt.Println("Error opening file.")
-		return
+		w.WriteHeader(http.StatusNotAcceptable)
+		return err
 	}
 
 	fileBytes, err := ioutil.ReadAll(file)
@@ -203,9 +185,8 @@ func SendDocument(w http.ResponseWriter, r *http.Request) {
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaDocument)
 	if err != nil {
 		fmt.Println("Error while uploading")
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotExtended)
-		return
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
 	}
 
 	documentMsg := &waProto.DocumentMessage{
@@ -231,30 +212,23 @@ func SendDocument(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotImplemented)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		fmt.Println("Error while sending message.")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(rsp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
+		w.Write(b)
 	}
+	return err
 }
 
-func SendAudio(w http.ResponseWriter, r *http.Request) {
+func SendAudio(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	downFile := r.MultipartForm.File["audio"][0]
@@ -262,7 +236,7 @@ func SendAudio(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 	if err != nil {
 		fmt.Println("Error opening file.")
-		return
+		return err
 	}
 
 	fileBytes, err := ioutil.ReadAll(file)
@@ -270,9 +244,8 @@ func SendAudio(w http.ResponseWriter, r *http.Request) {
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaAudio)
 	if err != nil {
 		fmt.Println("Error while uploading")
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotExtended)
-		return
+		w.WriteHeader(http.StatusNotAcceptable)
+		return err
 	}
 
 	audioMsg := &waProto.AudioMessage{
@@ -290,42 +263,34 @@ func SendAudio(w http.ResponseWriter, r *http.Request) {
 		User:   us[0],
 		Server: us[1],
 	}
+
 	rsp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
 		AudioMessage: audioMsg,
 	})
-
 	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotImplemented)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(rsp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
+		w.Write(b)
 	}
+	return err
 }
 
-func SendSticker(w http.ResponseWriter, r *http.Request) {
+func SendSticker(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	downFile := r.MultipartForm.File["sticker"][0]
 	file, err := downFile.Open()
 	if err != nil {
 		fmt.Println("Error opening file.")
-		return
+		return err
 	}
 	resImage, err := utils.ResizeImage(file)
 	fileBytes, err := ioutil.ReadAll(resImage)
@@ -333,9 +298,8 @@ func SendSticker(w http.ResponseWriter, r *http.Request) {
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaImage)
 	if err != nil {
 		fmt.Println("Error while uploading")
-		fmt.Println(err)
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
 	stickerMsg := &waProto.StickerMessage{
@@ -353,75 +317,51 @@ func SendSticker(w http.ResponseWriter, r *http.Request) {
 		User:   us[0],
 		Server: us[1],
 	}
+
 	rsp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
 		StickerMessage: stickerMsg,
 	})
-
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusNotImplemented)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
+		w.Write([]byte(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(rsp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
+		w.Write(b)
 	}
+	return err
 }
 
-func SendContact(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+func SendContact(w http.ResponseWriter, r *http.Request) error {
+	err := r.ParseForm()
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
-		return
+		return err
 	}
 
-	data := models.ContactRequest{}
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusPreconditionFailed)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
-	}
-	var us = strings.Split(data.ChatId, "@")
+	var us = strings.Split(r.FormValue("chat_id"), "@")
 	jid := types.JID{
 		User:   us[0],
 		Server: us[1],
 	}
 
 	msg := waProto.ContactMessage{
-		DisplayName: proto.String(data.FirstName + " " + data.LastName),
-		Vcard:       proto.String(data.PhoneNumber),
+		DisplayName: proto.String(r.FormValue("first_name") + " " + r.FormValue("last_name")),
+		Vcard:       proto.String(r.FormValue("number")),
 	}
 
-	fmt.Println(apiModels.Client.IsConnected())
 	resp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
 		ContactMessage: &msg,
 	})
-
 	if err != nil {
 		fmt.Println("Error sending message")
-		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		b, _ := json.Marshal(resp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
+		w.Write(b)
 	}
+	return err
 }
