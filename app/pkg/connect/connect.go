@@ -1,15 +1,19 @@
-package config
+package connect
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/mattn/go-sqlite3"
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"go_whatsapp_api/app/cmd/config"
 	"go_whatsapp_api/app/pkg/controllers"
 	"go_whatsapp_api/app/pkg/models"
+	"io/ioutil"
+	"log"
 )
 
 func Connect(minLevel string) {
@@ -52,4 +56,14 @@ func Connect(minLevel string) {
 		}
 	}
 
+	bridgeDataFile, err := ioutil.ReadFile("./app/cmd/config/bridge.json")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = json.Unmarshal(bridgeDataFile, &config.BridgingData)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Printf("%#v", config.BridgingData)
 }

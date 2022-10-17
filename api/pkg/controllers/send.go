@@ -19,38 +19,21 @@ import (
 )
 
 func SendMessage(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+	err := r.ParseForm()
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Error while parsing form.")
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
 
-	data := models.MsgRequest{}
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusPreconditionFailed)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
-	}
-	var us = strings.Split(data.ChatId, "@")
+	var us = strings.Split(r.FormValue("chat_id"), "@")
 	jid := types.JID{
 		User:   us[0],
 		Server: us[1],
 	}
 
 	msg := waProto.Message{
-		Conversation: &data.Text,
-		//ExtendedTextMessage: &waProto.ExtendedTextMessage{
-		//	ContextInfo: &waProto.ContextInfo{
-		//		MentionedJid: data.MentionID,
-		//	},
-		//},
+		Conversation: proto.String(r.FormValue("text")),
 	}
 
 	fmt.Println(apiModels.Client.IsConnected())
@@ -78,14 +61,16 @@ func SendPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	downFile, _, err := r.FormFile("image")
+	downFile := r.MultipartForm.File["image"][0]
+	file, err := downFile.Open()
+	defer file.Close()
 	if err != nil {
-		fmt.Println("Error retrieving data from form-data")
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println("Error opening file")
+		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
-	fileBytes, err := ioutil.ReadAll(downFile)
+
+	fileBytes, err := ioutil.ReadAll(file)
 
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaImage)
 	if err != nil {
@@ -133,135 +118,6 @@ func SendPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func SendAudio(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(1024 << 20)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
-
-	downFile, _, err := r.FormFile("audio")
-	if err != nil {
-		fmt.Println("Error retrieving data from form-data")
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	fileBytes, err := ioutil.ReadAll(downFile)
-
-	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaAudio)
-	if err != nil {
-		fmt.Println("Error while uploading")
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotExtended)
-		return
-	}
-
-	audioMsg := &waProto.AudioMessage{
-		Url:           &resp.URL,
-		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
-		FileSha256:    resp.FileSHA256,
-		FileLength:    &resp.FileLength,
-		MediaKey:      resp.MediaKey,
-		FileEncSha256: resp.FileEncSHA256,
-		DirectPath:    &resp.DirectPath,
-	}
-
-	var us = strings.Split(r.FormValue("chat_id"), "@")
-	jid := types.JID{
-		User:   us[0],
-		Server: us[1],
-	}
-	rsp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
-		AudioMessage: audioMsg,
-	})
-
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotImplemented)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-		b, _ := json.Marshal(rsp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-}
-
-func SendDocument(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(1024 << 20)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
-
-	downFile, handler, err := r.FormFile("file")
-	if err != nil {
-		fmt.Println("Error retrieving data from form-data")
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	fileBytes, err := ioutil.ReadAll(downFile)
-
-	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaDocument)
-	if err != nil {
-		fmt.Println("Error while uploading")
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotExtended)
-		return
-	}
-
-	documentMsg := &waProto.DocumentMessage{
-		Url:           &resp.URL,
-		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
-		Caption:       proto.String(r.FormValue("caption")),
-		Title:         proto.String(handler.Filename),
-		FileName:      proto.String(handler.Filename),
-		FileSha256:    resp.FileSHA256,
-		FileLength:    &resp.FileLength,
-		MediaKey:      resp.MediaKey,
-		FileEncSha256: resp.FileEncSHA256,
-		DirectPath:    &resp.DirectPath,
-	}
-
-	var us = strings.Split(r.FormValue("chat_id"), "@")
-	jid := types.JID{
-		User:   us[0],
-		Server: us[1],
-	}
-	rsp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
-		DocumentMessage: documentMsg,
-	})
-
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusNotImplemented)
-		b, _ := json.Marshal(err)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-		b, _ := json.Marshal(rsp)
-		_, err = w.Write(b)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-}
-
 func SendVideo(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
@@ -270,14 +126,14 @@ func SendVideo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	downFile, _, err := r.FormFile("video")
+	downFile := r.MultipartForm.File["video"][0]
+	file, err := downFile.Open()
 	if err != nil {
-		fmt.Println("Error retrieving data from form-data")
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println("Error opening file.")
 		return
 	}
-	fileBytes, err := ioutil.ReadAll(downFile)
+
+	fileBytes, err := ioutil.ReadAll(file)
 
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaVideo)
 	if err != nil {
@@ -326,6 +182,137 @@ func SendVideo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func SendDocument(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(1024 << 20)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	downFile := r.MultipartForm.File["file"][0]
+	file, err := downFile.Open()
+	defer file.Close()
+	if err != nil {
+		fmt.Println("Error opening file.")
+		return
+	}
+
+	fileBytes, err := ioutil.ReadAll(file)
+
+	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaDocument)
+	if err != nil {
+		fmt.Println("Error while uploading")
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotExtended)
+		return
+	}
+
+	documentMsg := &waProto.DocumentMessage{
+		Url:           &resp.URL,
+		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
+		Caption:       proto.String(r.FormValue("caption")),
+		Title:         proto.String(downFile.Filename),
+		FileName:      proto.String(downFile.Filename),
+		FileSha256:    resp.FileSHA256,
+		FileLength:    &resp.FileLength,
+		MediaKey:      resp.MediaKey,
+		FileEncSha256: resp.FileEncSHA256,
+		DirectPath:    &resp.DirectPath,
+	}
+
+	var us = strings.Split(r.FormValue("chat_id"), "@")
+	jid := types.JID{
+		User:   us[0],
+		Server: us[1],
+	}
+	rsp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
+		DocumentMessage: documentMsg,
+	})
+
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotImplemented)
+		b, _ := json.Marshal(err)
+		_, err = w.Write(b)
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+		b, _ := json.Marshal(rsp)
+		_, err = w.Write(b)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func SendAudio(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(1024 << 20)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	downFile := r.MultipartForm.File["audio"][0]
+	file, err := downFile.Open()
+	defer file.Close()
+	if err != nil {
+		fmt.Println("Error opening file.")
+		return
+	}
+
+	fileBytes, err := ioutil.ReadAll(file)
+
+	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaAudio)
+	if err != nil {
+		fmt.Println("Error while uploading")
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotExtended)
+		return
+	}
+
+	audioMsg := &waProto.AudioMessage{
+		Url:           &resp.URL,
+		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
+		FileSha256:    resp.FileSHA256,
+		FileLength:    &resp.FileLength,
+		MediaKey:      resp.MediaKey,
+		FileEncSha256: resp.FileEncSHA256,
+		DirectPath:    &resp.DirectPath,
+	}
+
+	var us = strings.Split(r.FormValue("chat_id"), "@")
+	jid := types.JID{
+		User:   us[0],
+		Server: us[1],
+	}
+	rsp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
+		AudioMessage: audioMsg,
+	})
+
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotImplemented)
+		b, _ := json.Marshal(err)
+		_, err = w.Write(b)
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+		b, _ := json.Marshal(rsp)
+		_, err = w.Write(b)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
 func SendSticker(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
@@ -334,14 +321,13 @@ func SendSticker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	downFile, _, err := r.FormFile("image")
+	downFile := r.MultipartForm.File["sticker"][0]
+	file, err := downFile.Open()
 	if err != nil {
-		fmt.Println("Error retrieving data from form-data")
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println("Error opening file.")
 		return
 	}
-	resImage, err := utils.ResizeImage(downFile)
+	resImage, err := utils.ResizeImage(file)
 	fileBytes, err := ioutil.ReadAll(resImage)
 
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaImage)
@@ -422,7 +408,9 @@ func SendContact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(apiModels.Client.IsConnected())
-	resp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{ContactMessage: &msg})
+	resp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &waProto.Message{
+		ContactMessage: &msg,
+	})
 
 	if err != nil {
 		fmt.Println("Error sending message")

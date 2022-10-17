@@ -2,10 +2,11 @@ package main
 
 import (
 	"go_whatsapp_api/api/cmd"
-	"go_whatsapp_api/app/pkg/config"
+	config2 "go_whatsapp_api/app/cmd/config"
+	"go_whatsapp_api/app/pkg/connect"
 )
 
 func main() {
-	go config.Connect("INFO")
-	cmd.APIStart(":8080")
+	go connect.Connect("INFO")
+	cmd.APIStart(config2.WhatsappPort)
 }
