@@ -19,8 +19,9 @@ func HandleMessage(m *events.Message, dest string) error {
 	} else if mess.AudioMessage != nil {
 		return controllers.HandleAudio(mess.AudioMessage, pushName, dest)
 	} else if mess.StickerMessage != nil {
-		return controllers.HandleSticker(mess.StickerMessage, pushName, dest)
-	} else if mess.ExtendedTextMessage.Text != nil {
+		//fmt.Printf("%#v\n", m.Message.StickerMessage.ContextInfo)
+		return controllers.HandleSticker(mess.StickerMessage, dest)
+	} else if mess.GetExtendedTextMessage().GetText() != "" {
 		return controllers.HandleText(mess, pushName, dest)
 	}
 

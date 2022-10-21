@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	qrcodeTerminal "github.com/Baozisoftware/qrcode-terminal-go"
 	"github.com/mattn/go-sqlite3"
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
@@ -20,7 +21,7 @@ func Connect(minLevel string) {
 	_, _, _ = sqlite3.Version()
 	dbLog := waLog.Stdout("Database", minLevel, true)
 
-	container, err := sqlstore.New("sqlite3", "file:examplestore.db?_foreign_keys=on", dbLog)
+	container, err := sqlstore.New("sqlite3", "file:whatsapp.db?_foreign_keys=on", dbLog)
 	if err != nil {
 		panic(err)
 	}
@@ -45,6 +46,8 @@ func Connect(minLevel string) {
 			if evt.Event == "code" {
 				qrcode.WriteFile(evt.Code, qrcode.Medium, 256, "scan.png")
 				fmt.Println("QR code:", evt.Code)
+				tObj := qrcodeTerminal.New()
+				tObj.Get(evt.Code).Print()
 			} else {
 				fmt.Println("Login event:", evt.Event)
 			}

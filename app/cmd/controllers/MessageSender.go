@@ -256,6 +256,53 @@ func HandleAudio(mess *proto.AudioMessage, from string, dest string) error {
 	return nil
 }
 
-func HandleSticker(mess *proto.StickerMessage, from string, dest string) error {
+func HandleSticker(mess *proto.StickerMessage, dest string) error {
+	fmt.Println("handling sticker")
+	client := &http.Client{Timeout: time.Minute * 60}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	file, err := models.Client.Download(mess)
+	if err != nil {
+		log.Println("Error downloading file")
+		return err
+	}
+
+	sendQuery := map[string]interface{}{
+		"chat_id": dest,
+	}
+
+	for k, v := range sendQuery {
+		fw, err := writer.CreateFormField(k)
+		_, err = io.Copy(fw, strings.NewReader(fmt.Sprint(v)))
+		if err != nil {
+			return err
+		}
+	}
+	fw, err := writer.CreateFormFile("sticker", "sendThis"+strings.Split(*mess.Mimetype, "/")[1])
+	_, err = io.Copy(fw, bytes.NewReader(file))
+	if err != nil {
+		fmt.Println("Error while copying data")
+		return err
+	}
+	err = writer.Close()
+	if err != nil {
+		fmt.Println("Error while closing writer.")
+		return err
+	}
+
+	req, err := http.NewRequest("POST", "http://localhost"+config2.TelegramPort+"/sendSticker/", body)
+	if err != nil {
+		fmt.Println("Error creating request.")
+		return err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	log.Println(resp)
 	return nil
 }

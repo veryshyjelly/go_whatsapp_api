@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
-	"go_whatsapp_api/api/pkg/utils"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
@@ -33,7 +32,6 @@ func SendMessage(w http.ResponseWriter, r *http.Request) error {
 	msg := waProto.Message{
 		Conversation: proto.String(r.FormValue("text")),
 	}
-
 	resp, err := apiModels.Client.SendMessage(context.Background(), jid, "", &msg)
 
 	if err != nil {
@@ -74,15 +72,27 @@ func SendPhoto(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	var caption string
+	var contextInfo *waProto.ContextInfo
+	if r.FormValue("caption") != "" {
+		caption = r.FormValue("sender") + ": " + r.FormValue("caption")
+	} else {
+		contextInfo = &waProto.ContextInfo{
+			Participant:   proto.String("0@s.whatsapp.net"),
+			QuotedMessage: &waProto.Message{Conversation: proto.String(r.FormValue("sender"))},
+		}
+	}
+
 	imageMsg := &waProto.ImageMessage{
 		Url:           &resp.URL,
 		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
-		Caption:       proto.String(r.FormValue("caption")),
+		Caption:       proto.String(caption),
 		FileSha256:    resp.FileSHA256,
 		FileLength:    &resp.FileLength,
 		MediaKey:      resp.MediaKey,
 		FileEncSha256: resp.FileEncSHA256,
 		DirectPath:    &resp.DirectPath,
+		ContextInfo:   contextInfo,
 	}
 
 	var us = strings.Split(r.FormValue("chat_id"), "@")
@@ -131,15 +141,27 @@ func SendVideo(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	var caption string
+	var contextInfo *waProto.ContextInfo
+	if r.FormValue("caption") != "" {
+		caption = r.FormValue("sender") + ": " + r.FormValue("caption")
+	} else {
+		contextInfo = &waProto.ContextInfo{
+			Participant:   proto.String("0@s.whatsapp.net"),
+			QuotedMessage: &waProto.Message{Conversation: proto.String(r.FormValue("sender"))},
+		}
+	}
+
 	videoMsg := &waProto.VideoMessage{
 		Url:           &resp.URL,
 		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
-		Caption:       proto.String(r.FormValue("caption")),
+		Caption:       proto.String(caption),
 		FileSha256:    resp.FileSHA256,
 		FileLength:    &resp.FileLength,
 		MediaKey:      resp.MediaKey,
 		FileEncSha256: resp.FileEncSHA256,
 		DirectPath:    &resp.DirectPath,
+		ContextInfo:   contextInfo,
 	}
 
 	var us = strings.Split(r.FormValue("chat_id"), "@")
@@ -189,10 +211,21 @@ func SendDocument(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	var caption string
+	var contextInfo *waProto.ContextInfo
+	if r.FormValue("caption") != "" {
+		caption = r.FormValue("sender") + ": " + r.FormValue("caption")
+	} else {
+		contextInfo = &waProto.ContextInfo{
+			Participant:   proto.String("0@s.whatsapp.net"),
+			QuotedMessage: &waProto.Message{Conversation: proto.String(r.FormValue("sender"))},
+		}
+	}
+
 	documentMsg := &waProto.DocumentMessage{
 		Url:           &resp.URL,
 		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
-		Caption:       proto.String(r.FormValue("caption")),
+		Caption:       proto.String(caption),
 		Title:         proto.String(downFile.Filename),
 		FileName:      proto.String(downFile.Filename),
 		FileSha256:    resp.FileSHA256,
@@ -200,6 +233,7 @@ func SendDocument(w http.ResponseWriter, r *http.Request) error {
 		MediaKey:      resp.MediaKey,
 		FileEncSha256: resp.FileEncSHA256,
 		DirectPath:    &resp.DirectPath,
+		ContextInfo:   contextInfo,
 	}
 
 	var us = strings.Split(r.FormValue("chat_id"), "@")
@@ -256,6 +290,10 @@ func SendAudio(w http.ResponseWriter, r *http.Request) error {
 		MediaKey:      resp.MediaKey,
 		FileEncSha256: resp.FileEncSHA256,
 		DirectPath:    &resp.DirectPath,
+		ContextInfo: &waProto.ContextInfo{
+			Participant:   proto.String("0@s.whatsapp.net"),
+			QuotedMessage: &waProto.Message{Conversation: proto.String(r.FormValue("sender"))},
+		},
 	}
 
 	var us = strings.Split(r.FormValue("chat_id"), "@")
@@ -292,8 +330,7 @@ func SendSticker(w http.ResponseWriter, r *http.Request) error {
 		fmt.Println("Error opening file.")
 		return err
 	}
-	resImage, err := utils.ResizeImage(file)
-	fileBytes, err := ioutil.ReadAll(resImage)
+	fileBytes, err := ioutil.ReadAll(file)
 
 	resp, err := apiModels.Client.Upload(context.Background(), fileBytes, whatsmeow.MediaImage)
 	if err != nil {
@@ -310,6 +347,10 @@ func SendSticker(w http.ResponseWriter, r *http.Request) error {
 		Mimetype:      proto.String(http.DetectContentType(fileBytes)), // replace this with the actual mime type
 		DirectPath:    &resp.DirectPath,
 		FileLength:    &resp.FileLength,
+		ContextInfo: &waProto.ContextInfo{
+			Participant:   proto.String("0@s.whatsapp.net"),
+			QuotedMessage: &waProto.Message{Conversation: proto.String(r.FormValue("sender"))},
+		},
 	}
 
 	var us = strings.Split(r.FormValue("chat_id"), "@")
